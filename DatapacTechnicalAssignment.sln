@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatapacTechnicalAssignment", "DatapacTechnicalAssignment\DatapacTechnicalAssignment.csproj", "{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{920A517E-5F01-40B5-B53F-81CB45DF40A8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E3566789-B957-40E4-BB0D-2123D3B4211A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatapacTechnicalAssignmentUnitTests", "DatapacTechnicalAssignmentUnitTests\DatapacTechnicalAssignmentUnitTests.csproj", "{FD425082-86D7-486C-A709-000A306F8667}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD425082-86D7-486C-A709-000A306F8667}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD425082-86D7-486C-A709-000A306F8667}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD425082-86D7-486C-A709-000A306F8667}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD425082-86D7-486C-A709-000A306F8667}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{014F8EC6-AB8A-4D11-8335-EE8C678FF8D9} = {920A517E-5F01-40B5-B53F-81CB45DF40A8}
+		{FD425082-86D7-486C-A709-000A306F8667} = {E3566789-B957-40E4-BB0D-2123D3B4211A}
+	EndGlobalSection
+EndGlobal
