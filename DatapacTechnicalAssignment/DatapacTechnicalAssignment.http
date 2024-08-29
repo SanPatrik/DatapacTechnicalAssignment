@@ -1,0 +1,58 @@
+### Create a new book
+POST http://localhost:5265/api/books
+Content-Type: application/json
+
+{
+  "title": "The Great Gatsby",
+  "author": "F. Scott Fitzgerald",
+  "quantity": 3
+}
+
+###
+### Get details of a specific book
+GET http://localhost:5265/api/books/838d2f1e-9b67-4849-b749-f631ac6411c1
+Accept: application/json
+
+### Update a specific book
+PUT http://localhost:5265/api/books/838d2f1e-9b67-4849-b749-f631ac6411c1
+Content-Type: application/json
+
+{
+    "id": "838d2f1e-9b67-4849-b749-f631ac6411c1",
+  "title": "The Great Gatsby - Updated",
+  "author": "F. Scott Fitzgerald",
+  "quantity": 5
+}
+
+### Delete a specific book
+DELETE http://localhost:5265/api/books/838d2f1e-9b67-4849-b749-f631ac6411c1
+Accept: application/json
+
+
+
+
+
+
+###
+### Create a new loan
+POST http://localhost:5265/api/loans
+Content-Type: application/json
+
+{
+  "userId": "user-guid",
+  "bookId": "book-guid",
+  "borrowedDate": "2024-08-27T12:00:00Z",
+  "dueDate": "2024-09-27T12:00:00Z"
+}
+
+###
+### Return a borrowed book
+PATCH http://localhost:5265/api/loans/{id}
+Content-Type: application/json
+
+###
+### Get details of a specific loan
+GET http://localhost:5265/api/loans/{id}
+Accept: application/json
+
+###
