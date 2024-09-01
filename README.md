@@ -56,6 +56,3 @@ The project uses Quartz\.NET for scheduling tasks\. The return date for loans is
 
 ## In\-Memory Database
 The project uses an in\-memory database with Entity Framework Core for easy testing and development\. This allows you to run the application and tests without setting up a real database\.
-
-## License
-This project is licensed under the MIT License\.
