@@ -1,7 +1,6 @@
 using DatapacTechnicalAssignment.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
+using DatapacTechnicalAssignment.Controllers.Dtos;
 
 namespace DatapacTechnicalAssignment.Controllers
 {
@@ -22,20 +21,29 @@ namespace DatapacTechnicalAssignment.Controllers
         /// <summary>
         /// Vytvorí novú knihu.
         /// </summary>
-        /// <param name="book">Model knihy na vytvorenie.</param>
+        /// <param name="bookDto"></param>
         /// <returns>HTTP 201 Created ak bola kniha úspešne vytvorená.</returns>
         /// <response code="400">Vracia sa, ak sú vstupy neplatné.</response>
         [HttpPost]
         [Produces("application/json")]
         [ProducesResponseType(typeof(Book), 201)]
         [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
-        public async Task<IActionResult> CreateBook([FromBody] Book book)
+        public async Task<IActionResult> CreateBook([FromBody] BookDto bookDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            var book = new Book
+            {
+                Title = bookDto.Title,
+                Author = bookDto.Author,
+                Quantity = bookDto.Quantity,
+                AvailableQuantity = bookDto.Quantity
+            };
+
             _context.Books.Add(book);
             await _context.SaveChangesAsync();
+            
             return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
         }
 
@@ -60,7 +68,7 @@ namespace DatapacTechnicalAssignment.Controllers
         /// Aktualizuje existujúcu knihu podľa ID.
         /// </summary>
         /// <param name="id">ID knihy na aktualizáciu.</param>
-        /// <param name="book">Model knihy s novými údajmi.</param>
+        /// <param name="bookDto"></param>
         /// <returns>HTTP 204 No Content ak bola kniha úspešne aktualizovaná, inak HTTP 400 Bad Request.</returns>
         /// <response code="400">Vracia sa, ak ID v URL neodpovedá ID v tele požiadavky.</response>
         /// <response code="404">Vracia sa, ak kniha neexistuje.</response>
@@ -69,17 +77,27 @@ namespace DatapacTechnicalAssignment.Controllers
         [ProducesResponseType(typeof(void), 204)]
         [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
         [ProducesResponseType(typeof(void), 404)]
-        public async Task<IActionResult> UpdateBook([FromRoute] Guid id, [FromBody] Book book)
+        public async Task<IActionResult> UpdateBook([FromRoute] Guid id, [FromBody] BookDto bookDto)
         {
-            if (id != book.Id) return BadRequest("ID in request body does not match ID in URL.");
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var existingBook = await _context.Books.FindAsync(id);
             if (existingBook == null) return NotFound();
 
-            _context.Entry(existingBook).CurrentValues.SetValues(book);
+            // Calculate the difference between the new quantity and the current quantity
+            int quantityDifference = bookDto.Quantity - existingBook.Quantity;
+
+            // Update the existing book's properties
+            existingBook.Title = bookDto.Title;
+            existingBook.Author = bookDto.Author;
+            existingBook.Quantity = bookDto.Quantity;
+
+            // Adjust the available quantity
+            existingBook.AvailableQuantity += quantityDifference;
+
             await _context.SaveChangesAsync();
-            return NoContent();
+            
+            return Ok(existingBook);
         }
 
         /// <summary>
