@@ -1,57 +1,105 @@
 using DatapacTechnicalAssignment.Controllers;
 using DatapacTechnicalAssignment.Models;
+using DatapacTechnicalAssignment.Controllers.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 
-namespace DatapacTechnicalAssignmentUnitTests;
-
-public class BookControllerTests
+namespace DatapacTechnicalAssignmentUnitTests
 {
-    private readonly BooksController _controller;
-    private readonly Mock<DbSet<Book>> _mockBooks;
-    private readonly Mock<ApplicationDbContext> _mockContext;
-
-    public BookControllerTests()
+    public class BookControllerTests
     {
-        _mockBooks = new Mock<DbSet<Book>>();
-        _mockContext = new Mock<ApplicationDbContext>();
-        _mockContext.Setup(c => c.Books).Returns(_mockBooks.Object);
+        private readonly BooksController _controller;
+        private readonly ApplicationDbContext _context;
 
-        _controller = new BooksController(_mockContext.Object);
+        public BookControllerTests()
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: "TestDatabase")
+                .Options;
+
+            _context = new ApplicationDbContext(options);
+            _controller = new BooksController(_context);
+        }
+        
+        [Fact]
+        public async Task GetBook_ReturnsOk_WhenBookExists()
+        {
+            // Arrange
+            var bookId = Guid.NewGuid();
+            var book = new Book { Id = bookId, Title = "Test Book", Author = "Author", Quantity = 3, AvailableQuantity = 3 };
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _controller.GetBook(bookId) as OkObjectResult;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(200, result.StatusCode);
+        }
+        
+        [Fact]
+        public async Task CreateBook_ReturnsCreatedAtActionResult_WhenBookIsValid()
+        {
+            // Arrange
+            var book = new BookDto { Title = "Test Book", Author = "Author", Quantity = 3};
+
+            // Act
+            var result = await _controller.CreateBook(book) as CreatedAtActionResult;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(201, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetBook_ReturnsNotFound_WhenBookDoesNotExist()
+        {
+            // Arrange
+            var bookId = Guid.NewGuid();
+
+            // Act
+            var result = await _controller.GetBook(bookId) as NotFoundResult;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(404, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task UpdateBook_ReturnsOk_WhenBookIsUpdated()
+        {
+            // Arrange
+            var bookId = Guid.NewGuid();
+            var book = new Book { Id = bookId, Title = "Test Book", Author = "Author", Quantity = 3, AvailableQuantity = 3};
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            var bookDto = new BookDto { Title = "Test Book Updated", Author = "Author Updated", Quantity = 5 };
+
+            // Act
+            var result = await _controller.UpdateBook(bookId, bookDto) as OkObjectResult;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(200, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task DeleteBook_ReturnsNoContent_WhenBookIsDeleted()
+        {
+            // Arrange
+            var bookId = Guid.NewGuid();
+            var book = new Book { Id = bookId, Title = "Test Book", Author = "Author", Quantity = 3, AvailableQuantity = 3 };
+            _context.Books.Add(book);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _controller.DeleteBook(bookId) as NoContentResult;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(204, result.StatusCode);
+        }
     }
-
-    [Fact]
-    public async Task CreateBook_ReturnsCreatedAtActionResult_WhenBookIsValid()
-    {
-        // Arrange
-        var book = new Book { Title = "Test Book", Author = "Author" };
-
-        _mockContext.Setup(c => c.Books.Add(book)).Verifiable();
-        _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
-
-        // Act
-        var result = await _controller.CreateBook(book) as CreatedAtActionResult;
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(201, result.StatusCode);
-    }
-
-    [Fact]
-    public async Task GetBook_ReturnsNotFound_WhenBookDoesNotExist()
-    {
-        // Arrange
-        var bookId = Guid.NewGuid();
-        _mockContext.Setup(c => c.Books.FindAsync(bookId)).ReturnsAsync((Book)null);
-
-        // Act
-        var result = await _controller.GetBook(bookId) as NotFoundResult;
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(404, result.StatusCode);
-    }
-
-    // Add additional tests for UpdateBook and DeleteBook
 }

@@ -1,37 +1,24 @@
-using System;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
 using DatapacTechnicalAssignment.Controllers;
 using DatapacTechnicalAssignment.Models;
+using DatapacTechnicalAssignment.Controllers.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Moq;
-using Xunit;
 
 namespace DatapacTechnicalAssignmentUnitTests
 {
     public class LoansControllerTests
     {
         private readonly LoansController _controller;
-        private readonly Mock<DbSet<Loan>> _mockLoans;
-        private readonly Mock<DbSet<Book>> _mockBooks;
-        private readonly Mock<DbSet<User>> _mockUsers;
-        private readonly Mock<ApplicationDbContext> _mockContext;
+        private readonly ApplicationDbContext _context;
 
         public LoansControllerTests()
         {
-            _mockLoans = new Mock<DbSet<Loan>>();
-            _mockBooks = new Mock<DbSet<Book>>();
-            _mockUsers = new Mock<DbSet<User>>();
-            _mockContext = new Mock<ApplicationDbContext>();
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: "TestDatabase")
+                .Options;
 
-            _mockContext.Setup(c => c.Loans).Returns(_mockLoans.Object);
-            _mockContext.Setup(c => c.Books).Returns(_mockBooks.Object);
-            _mockContext.Setup(c => c.Users).Returns(_mockUsers.Object);
-
-            _controller = new LoansController(_mockContext.Object);
+            _context = new ApplicationDbContext(options);
+            _controller = new LoansController(_context);
         }
 
         [Fact]
@@ -40,13 +27,10 @@ namespace DatapacTechnicalAssignmentUnitTests
             // Arrange
             var bookId = Guid.NewGuid();
             var userId = Guid.NewGuid();
-            var loan = new Loan
+            var loanDto = new LoanDto
             {
-                Id = Guid.NewGuid(),
                 UserId = userId,
                 BookId = bookId,
-                BorrowedDate = DateTime.UtcNow,
-                DueDate = DateTime.UtcNow.AddDays(30)
             };
 
             var book = new Book
@@ -54,39 +38,42 @@ namespace DatapacTechnicalAssignmentUnitTests
                 Id = bookId,
                 Title = "Test Book",
                 Author = "Author Name",
-                Quantity = 5 // Initial quantity
+                Quantity = 5 ,// Initial quantity
+                AvailableQuantity = 5
             };
 
-            _mockBooks.Setup(b => b.FindAsync(bookId)).ReturnsAsync(book);
-            _mockUsers.Setup(u => u.FindAsync(userId)).ReturnsAsync(new User { Id = userId });
-
-            _mockContext.Setup(c => c.Loans.Add(It.IsAny<Loan>())).Verifiable();
-            _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+            _context.Books.Add(book);
+            _context.Users.Add(new User { Id = userId, Name = "Name", Email = "Email" });
+            await _context.SaveChangesAsync();
 
             // Act
-            var result = await _controller.CreateLoan(loan) as CreatedAtActionResult;
+            var result = await _controller.CreateLoan(loanDto) as CreatedAtActionResult;
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(201, result.StatusCode);
-            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             // Verify the book quantity is decremented
-            Assert.Equal(4, book.Quantity);
+            var updatedBook = await _context.Books.FindAsync(bookId);
+            Assert.Equal(4, updatedBook.AvailableQuantity);
         }
 
         [Fact]
-        public async Task ReturnBook_ReturnsNoContent_WhenSuccessful()
+        public async Task ReturnBook_ReturnsOK_WhenSuccessful()
         {
             // Arrange
             var loanId = Guid.NewGuid();
             var bookId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var user = new User { Id = userId, Name = "Name", Email = "Email" };
             var loan = new Loan
             {
                 Id = loanId,
                 BookId = bookId,
+                UserId = userId,
                 BorrowedDate = DateTime.UtcNow,
-                DueDate = DateTime.UtcNow.AddDays(30)
+                ReturnedDate = null,
+                DueDate = DateTime.UtcNow.AddDays(1)
             };
 
             var book = new Book
@@ -94,26 +81,25 @@ namespace DatapacTechnicalAssignmentUnitTests
                 Id = bookId,
                 Title = "Test Book",
                 Author = "Author Name",
-                Quantity = 4 // Quantity after being borrowed
+                Quantity = 5, // Quantity after being borrowed
+                AvailableQuantity = 4
             };
 
-            _mockContext.Setup(c => c.Loans.Include(l => l.Book)
-                .FirstOrDefaultAsync(It.IsAny<Expression<Func<Loan, bool>>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(loan);
-
-            _mockBooks.Setup(b => b.FindAsync(bookId)).ReturnsAsync(book);
-            _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+            _context.Loans.Add(loan);
+            _context.Books.Add(book);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
             // Act
-            var result = await _controller.ReturnBook(loanId) as NoContentResult;
+            var result = await _controller.ReturnBook(loanId) as OkObjectResult;
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(204, result.StatusCode);
-            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal(200, result.StatusCode);
 
             // Verify the book quantity is incremented
-            Assert.Equal(5, book.Quantity);
+            var updatedBook = await _context.Books.FindAsync(bookId);
+            Assert.Equal(5, updatedBook.AvailableQuantity);
         }
 
         [Fact]
@@ -121,12 +107,9 @@ namespace DatapacTechnicalAssignmentUnitTests
         {
             // Arrange
             var loanId = Guid.NewGuid();
-            _mockContext.Setup(c => c.Loans.Include(l => l.Book).Include(l => l.User)
-                .FirstOrDefaultAsync(It.IsAny<Expression<Func<Loan, bool>>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Loan)null);
 
             // Act
-            var result = await _controller.GetLoan(loanId) as NotFoundResult;
+            var result = await _controller.GetLoan(loanId) as NotFoundObjectResult;
 
             // Assert
             Assert.NotNull(result);
