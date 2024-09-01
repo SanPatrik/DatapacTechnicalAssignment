@@ -5,14 +5,14 @@ using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Pridanie služieb do kontajnera
+// Pridanie služieb do kontajnera
 builder.Services.AddControllers();
 
-// 2. Nastavenie Entity Framework Core s in-memory databázou
+// Nastavenie Entity Framework Core s in-memory databázou
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseInMemoryDatabase("InMemoryDb"));
 
-// 3. Nastavenie Quartz.NET
+// Nastavenie Quartz.NET pre plánovanie úloh
 builder.Services.AddQuartz(q =>
 {
     q.UseMicrosoftDependencyInjectionJobFactory();
@@ -24,12 +24,12 @@ builder.Services.AddQuartz(q =>
     q.AddTrigger(opts => opts
         .ForJob(jobKey)
         .WithIdentity("ReminderJob-trigger")
-        .WithCronSchedule("0 0 9 * * ?")); // Cron schedule: každý deň o 9:00
+        .WithCronSchedule("0 * * * * ?")); // Cron schedule: každú minútu pre testovacie účely
 });
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// 4. Pridanie Swagger/OpenAPI na dokumentáciu API
+// Pridanie Swagger/OpenAPI na dokumentáciu API
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -37,8 +37,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
-// 5. Nastavenie middleware
 
 // Použitie Swaggeru v developmente
 if (app.Environment.IsDevelopment())
@@ -55,45 +53,36 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-// Inicializácia databázy s mock dátami
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    SeedDatabase(dbContext);  // Zavolanie metódy na inicializáciu dát
-}
-
 app.Run();
-
-// Definícia metódy na Seed databázy
-void SeedDatabase(ApplicationDbContext context)
-{
-    context.Users.AddRange(
-        new User { Name = "John Doe", Email = "john@example.com" },
-        new User { Name = "Jane Doe", Email = "jane@example.com" }
-    );
-
-    context.Books.AddRange(
-        new Book { Title = "1984", Author = "George Orwell" },
-        new Book { Title = "Brave New World", Author = "Aldous Huxley" }
-    );
-
-    context.SaveChanges();
-}
 
 // Definícia Quartz Jobu ako samostatnej triedy
 public class ReminderJob : IJob
 {
     private readonly ILogger<ReminderJob> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public ReminderJob(ILogger<ReminderJob> logger)
+    public ReminderJob(ILogger<ReminderJob> logger, ApplicationDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
-    public Task Execute(IJobExecutionContext context)
+    public async Task Execute(IJobExecutionContext context)
     {
-        // Tu pridáš logiku na odosielanie pripomienok
-        _logger.LogInformation("ReminderJob is executing at {time}", DateTimeOffset.Now);
-        return Task.CompletedTask;
+        var loans = _context.Loans.Include(l => l.User).Include(l => l.Book)
+            .Where(l => l.DueDate <= DateTime.Now.AddDays(1) && l.ReturnedDate == null).ToList();
+
+        if (loans.Count == 0)   
+        {
+            _logger.LogInformation("No loans due tomorrow.");
+        }
+        foreach (var loan in loans)
+        {
+            // Mock sending email
+            _logger.LogInformation("Sending reminder email to {userEmail} for book {bookTitle} due on {dueDate}",
+                loan.User.Email, loan.Book.Title, loan.DueDate);
+        }
+
+        await Task.CompletedTask;
     }
 }
