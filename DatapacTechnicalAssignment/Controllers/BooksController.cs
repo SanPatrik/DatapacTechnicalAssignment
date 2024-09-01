@@ -74,7 +74,7 @@ namespace DatapacTechnicalAssignment.Controllers
         /// <response code="404">Vracia sa, ak kniha neexistuje.</response>
         [HttpPut("{id}")]
         [Produces("application/json")]
-        [ProducesResponseType(typeof(void), 204)]
+        [ProducesResponseType(typeof(Book), 200)]
         [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
         [ProducesResponseType(typeof(void), 404)]
         public async Task<IActionResult> UpdateBook([FromRoute] Guid id, [FromBody] BookDto bookDto)
@@ -113,7 +113,7 @@ namespace DatapacTechnicalAssignment.Controllers
         public async Task<IActionResult> DeleteBook([FromRoute] Guid id)
         {
             var book = await _context.Books.FindAsync(id);
-            if (book == null) return NotFound();
+            if (book == null) return NoContent();
 
             _context.Books.Remove(book);
             await _context.SaveChangesAsync();

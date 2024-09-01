@@ -19,7 +19,20 @@ namespace DatapacTechnicalAssignment.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Vytvorí novú výpožičku.
+        /// </summary>
+        /// <param name="loanDto">Detaily výpožičky.</param>
+        /// <returns>HTTP 201 Created ak bola výpožička úspešne vytvorená.</returns>
+        /// <response code="400">Vracia sa, ak sú vstupy neplatné.</response>
+        /// <response code="404">Vracia sa, ak používateľ alebo kniha neexistuje.</response>
+        /// <response code="200">Vracia sa, ak kniha nie je dostupná.</response>
         [HttpPost]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(Loan), 201)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), 400)]
+        [ProducesResponseType(typeof(string), 404)]
+        [ProducesResponseType(typeof(object), 200)]
         public async Task<IActionResult> CreateLoan([FromBody] LoanDto loanDto)
         {
             if (!ModelState.IsValid)
@@ -54,7 +67,16 @@ namespace DatapacTechnicalAssignment.Controllers
             return CreatedAtAction(nameof(GetLoan), new { id = loan.Id }, loan);
         }
 
+        /// <summary>
+        /// Vráti knihu podľa ID výpožičky.
+        /// </summary>
+        /// <param name="id">ID výpožičky.</param>
+        /// <returns>HTTP 200 OK ak bola kniha úspešne vrátená, inak HTTP 404 Not Found.</returns>
+        /// <response code="404">Vracia sa, ak výpožička neexistuje.</response>
         [HttpPatch("{id}")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(void), 404)]
         public async Task<IActionResult> ReturnBook(Guid id)
         {
             var loan = await _context.Loans
