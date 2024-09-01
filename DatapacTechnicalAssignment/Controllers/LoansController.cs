@@ -1,3 +1,4 @@
+using DatapacTechnicalAssignment.Controllers.Dtos;
 using DatapacTechnicalAssignment.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,28 +20,53 @@ namespace DatapacTechnicalAssignment.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateLoan([FromBody] Loan loan)
+        public async Task<IActionResult> CreateLoan([FromBody] LoanDto loanDto)
         {
-            var book = await _context.Books.FindAsync(loan.BookId);
-            if (book == null || book.AvailableQuantity <= 0)
-                return BadRequest("Book not available");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
+            var user = await _context.Users.FindAsync(loanDto.UserId);
+            if (user == null)
+                return NotFound("User not found.");
+            
+            var book = await _context.Books.FindAsync(loanDto.BookId);
+            
+            if (book == null)
+                return NotFound("Book not found.");
+            
+            if (book.AvailableQuantity <= 0)
+                return Ok(new { Message = "Book is not available." });
+            
             book.AvailableQuantity--;
+
+            var loan = new Loan
+            {
+                UserId = loanDto.UserId,
+                BookId = loanDto.BookId,
+                BorrowedDate = DateTime.Now,
+                ReturnedDate = null,
+                DueDate = DateTime.Now.AddDays(1)
+            };
+
             _context.Loans.Add(loan);
             await _context.SaveChangesAsync();
+
             return CreatedAtAction(nameof(GetLoan), new { id = loan.Id }, loan);
         }
 
         [HttpPatch("{id}")]
         public async Task<IActionResult> ReturnBook(Guid id)
         {
-            var loan = await _context.Loans.Include(l => l.Book).FirstOrDefaultAsync(l => l.Id == id);
+            var loan = await _context.Loans
+                .Include(l => l.Book)
+                .Include(l => l.User)
+                .FirstOrDefaultAsync(l => l.Id == id);
             if (loan == null) return NotFound();
 
             loan.Book.AvailableQuantity++;
             loan.ReturnedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(new { Message = "Book is returned." });
         }
 
 
@@ -62,6 +88,7 @@ namespace DatapacTechnicalAssignment.Controllers
                 .FirstOrDefaultAsync(l => l.Id == id);
 
             if (loan == null) return NotFound($"Loan with ID {id} not found.");
+            
             return Ok(loan);
         }
     }
